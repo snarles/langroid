@@ -280,6 +280,8 @@ class OpenAIGPTConfig(LLMConfig):
     # the OpenAI Tools API; this ensures that the generated tools
     # adhere to the provided schema.
     supports_strict_tools: Optional[bool] = None
+    # Bypasses HTTP verification if True.
+    bypass_http_verification: Optional[bool] = False
     # a string that roughly matches a HuggingFace chat_template,
     # e.g. "mistral-instruct-v0.2 (a fuzzy search is done to find the closest match)
     formatter: str | None = None
@@ -444,6 +446,8 @@ class OpenAIGPT(LanguageModel):
             else:
                 # e.g. "local/localhost:8000/v1//mistral-instruct-v0.2"
                 self.config.formatter = formatter
+
+        self.bypass_http_verification: bool = self.config.bypass_http_verification or False
 
         if self.config.formatter is not None:
             self.config.hf_formatter = HFFormatter(
@@ -638,6 +642,7 @@ class OpenAIGPT(LanguageModel):
                     organization=self.config.organization,
                     timeout=Timeout(self.config.timeout),
                     default_headers=self.config.headers,
+                    bypass_http_verification=self.bypass_http_verification,
                 )
                 self.async_client = get_async_openai_client(
                     api_key=self.api_key,
@@ -645,23 +650,42 @@ class OpenAIGPT(LanguageModel):
                     organization=self.config.organization,
                     timeout=Timeout(self.config.timeout),
                     default_headers=self.config.headers,
+                    bypass_http_verification=self.bypass_http_verification,
                 )
             else:
                 # Create new clients without caching
-                self.client = OpenAI(
-                    api_key=self.api_key,
-                    base_url=self.api_base,
-                    organization=self.config.organization,
-                    timeout=Timeout(self.config.timeout),
-                    default_headers=self.config.headers,
-                )
-                self.async_client = AsyncOpenAI(
-                    api_key=self.api_key,
-                    base_url=self.api_base,
-                    organization=self.config.organization,
-                    timeout=Timeout(self.config.timeout),
-                    default_headers=self.config.headers,
-                )
+                if self.bypass_http_verification:
+                    self.client = OpenAI(
+                        api_key=self.api_key,
+                        base_url=self.api_base,
+                        organization=self.config.organization,
+                        timeout=Timeout(self.config.timeout),
+                        default_headers=self.config.headers,
+                        http_client=Client(verify=False),
+                    )
+                    self.async_client = AsyncOpenAI(
+                        api_key=self.api_key,
+                        base_url=self.api_base,
+                        organization=self.config.organization,
+                        timeout=Timeout(self.config.timeout),
+                        default_headers=self.config.headers,
+                        http_client=Client(verify=False),
+                    )
+                else:
+                    self.client = OpenAI(
+                        api_key=self.api_key,
+                        base_url=self.api_base,
+                        organization=self.config.organization,
+                        timeout=Timeout(self.config.timeout),
+                        default_headers=self.config.headers,
+                    )
+                    self.async_client = AsyncOpenAI(
+                        api_key=self.api_key,
+                        base_url=self.api_base,
+                        organization=self.config.organization,
+                        timeout=Timeout(self.config.timeout),
+                        default_headers=self.config.headers,
+                    )
 
         self.cache: CacheDB | None = None
         use_cache = self.config.cache_config is not None

@@ -9,7 +9,7 @@ from typing import Any, Dict, Optional, Union, cast
 
 from cerebras.cloud.sdk import AsyncCerebras, Cerebras
 from groq import AsyncGroq, Groq
-from httpx import Timeout
+from httpx import Timeout, Client
 from openai import AsyncOpenAI, OpenAI
 
 # Cache for client instances, keyed by hashed configuration parameters
@@ -49,6 +49,7 @@ def get_openai_client(
     organization: Optional[str] = None,
     timeout: Union[float, Timeout] = 120.0,
     default_headers: Optional[Dict[str, str]] = None,
+    bypass_http_verification: Optional[bool] = False,
 ) -> OpenAI:
     """
     Get or create a singleton OpenAI client with the given configuration.
@@ -59,6 +60,7 @@ def get_openai_client(
         organization: Optional organization ID
         timeout: Request timeout
         default_headers: Optional default headers
+        bypass_http_verification: Bypasses HTTP verification if True.
 
     Returns:
         OpenAI client instance
@@ -72,19 +74,29 @@ def get_openai_client(
         base_url=base_url,
         organization=organization,
         timeout=timeout,
-        default_headers=default_headers,
+        default_headers=default_headers, # CZ: Need to add more stuff here?
     )
 
     if cache_key in _client_cache:
         return cast(OpenAI, _client_cache[cache_key])
 
-    client = OpenAI(
-        api_key=api_key,
-        base_url=base_url,
-        organization=organization,
-        timeout=timeout,
-        default_headers=default_headers,
-    )
+    if bypass_http_verification:
+        client = OpenAI(
+            api_key=api_key,
+            base_url=base_url,
+            organization=organization,
+            timeout=timeout,
+            default_headers=default_headers,
+            http_client=Client(verify=False),
+        )
+    else:
+        client = OpenAI(
+            api_key=api_key,
+            base_url=base_url,
+            organization=organization,
+            timeout=timeout,
+            default_headers=default_headers,
+        )
 
     _client_cache[cache_key] = client
     _all_clients.add(client)
@@ -97,6 +109,7 @@ def get_async_openai_client(
     organization: Optional[str] = None,
     timeout: Union[float, Timeout] = 120.0,
     default_headers: Optional[Dict[str, str]] = None,
+    bypass_http_verification: Optional[bool] = False,
 ) -> AsyncOpenAI:
     """
     Get or create a singleton AsyncOpenAI client with the given configuration.
@@ -107,6 +120,7 @@ def get_async_openai_client(
         organization: Optional organization ID
         timeout: Request timeout
         default_headers: Optional default headers
+        bypass_http_verification: Bypasses HTTP verification if True.
 
     Returns:
         AsyncOpenAI client instance
@@ -132,6 +146,7 @@ def get_async_openai_client(
         organization=organization,
         timeout=timeout,
         default_headers=default_headers,
+        http_client=Client(verify=False),
     )
 
     _client_cache[cache_key] = client
