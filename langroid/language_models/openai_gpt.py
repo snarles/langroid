@@ -22,7 +22,7 @@ from typing import (
 import openai
 from cerebras.cloud.sdk import AsyncCerebras, Cerebras
 from groq import AsyncGroq, Groq
-from httpx import Timeout
+from httpx import Timeout, Client, AsyncClient
 from openai import AsyncOpenAI, OpenAI
 from rich import print
 from rich.markup import escape
@@ -669,7 +669,7 @@ class OpenAIGPT(LanguageModel):
                         organization=self.config.organization,
                         timeout=Timeout(self.config.timeout),
                         default_headers=self.config.headers,
-                        http_client=Client(verify=False),
+                        http_client=AsyncClient(verify=False),
                     )
                 else:
                     self.client = OpenAI(

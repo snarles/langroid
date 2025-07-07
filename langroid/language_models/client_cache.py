@@ -9,7 +9,7 @@ from typing import Any, Dict, Optional, Union, cast
 
 from cerebras.cloud.sdk import AsyncCerebras, Cerebras
 from groq import AsyncGroq, Groq
-from httpx import Timeout, Client
+from httpx import Timeout, Client, AsyncClient
 from openai import AsyncOpenAI, OpenAI
 
 # Cache for client instances, keyed by hashed configuration parameters
@@ -146,7 +146,7 @@ def get_async_openai_client(
         organization=organization,
         timeout=timeout,
         default_headers=default_headers,
-        http_client=Client(verify=False),
+        http_client=AsyncClient(verify=False),
     )
 
     _client_cache[cache_key] = client
